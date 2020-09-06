@@ -5,6 +5,8 @@
 #include <nall/snes/cpu.hpp>
 #include <nall/snes/smp.hpp>
 
+#include "memory/memory.hpp"
+
 #include "debugger.moc"
 Debugger *debugger;
 
@@ -23,6 +25,7 @@ Debugger *debugger;
 
 #include "tools/breakpoint.cpp"
 #include "tools/memory.cpp"
+#include "tools/memory_schema_viewer.cpp"
 #include "tools/properties.cpp"
 
 #include "ppu/base-renderer.cpp"
@@ -57,6 +60,7 @@ Debugger::Debugger() {
   menu_tools = menu->addMenu("&Tools");
   menu_tools_breakpoint = menu_tools->addAction("&Breakpoint Editor ...");
   menu_tools_memory = menu_tools->addAction("&Memory Editor ...");
+  menu_tools_memorySchemaViewer = menu_tools->addAction("&Memory Schema Viewer ...");
   menu_tools_propertiesViewer = menu_tools->addAction("&Properties Viewer ...");
 
   menu_ppu = menu->addMenu("&S-PPU");
@@ -104,6 +108,7 @@ Debugger::Debugger() {
   consoleLayout = new QSplitter(Qt::Vertical);
   layout->addWidget(consoleLayout);
 
+  memorySchema = new MemorySchema();
   symbolsCPU = new SymbolMap();
   symbolsSA1 = new SymbolMap();
   symbolsSMP = new SymbolMap();
@@ -209,6 +214,7 @@ Debugger::Debugger() {
 
   connect(menu_tools_breakpoint, SIGNAL(triggered()), breakpointEditor, SLOT(show()));
   connect(menu_tools_memory, SIGNAL(triggered()), this, SLOT(createMemoryEditor()));
+  connect(menu_tools_memorySchemaViewer, SIGNAL(triggered()), this, SLOT(createMemorySchemaViewer()));
   connect(menu_tools_propertiesViewer, SIGNAL(triggered()), propertiesViewer, SLOT(show()));
 
   connect(menu_ppu_tileViewer, SIGNAL(triggered()), tileViewer, SLOT(show()));
@@ -260,6 +266,12 @@ void Debugger::createMemoryEditor() {
   editor->show();
 }
 
+void Debugger::createMemorySchemaViewer() {
+  MemorySchemaViewer *editor = new MemorySchemaViewer();
+  editor->setSchemaList(memorySchema);
+  editor->show();
+}
+
 void Debugger::modifySystemState(unsigned state) {
   string usagefile = filepath(nall::basename(cartridge.fileName), config().path.data);
   string bpfile = usagefile;
@@ -300,11 +312,19 @@ void Debugger::modifySystemState(unsigned state) {
     } else {
       SNES::cpuAnalyst.performFullAnalysis();
     }
+
+    memorySchema->reset();
     
     symbolsCPU->reset();
     symbolsSMP->reset();
     symbolsSA1->reset();
     symbolsSFX->reset();
+
+    MemorySchemaJsonLoader memorySchemaLoader(memorySchema);
+    memorySchemaLoader.load(nall::basename(symfile).append(".schema.json"));
+    for (MemorySchemaViewer *schemaViewer : memorySchemaViewers) {
+      schemaViewer->setSchemaList(memorySchema);
+    }
     
     if (!symbolsCPU->loadFromFile(nall::basename(symfile), ".cpu.sym") &&
         !symbolsCPU->loadFromFile(nall::basename(symfile), ".sym") &&
@@ -440,6 +460,10 @@ void Debugger::synchronize() {
   QVectorIterator<MemoryEditor*> i(memoryEditors);
   while (i.hasNext()) {
     i.next()->synchronize();
+  }
+  QVectorIterator<MemorySchemaViewer*> j(memorySchemaViewers);
+  while (j.hasNext()) {
+    j.next()->synchronize();
   }
 }
 
@@ -712,6 +736,11 @@ void Debugger::autoUpdate() {
     registerEditSMP->synchronize();
     registerEditSFX->synchronize();
     registerEditSGB->synchronize();
+  }
+  
+  QVectorIterator<MemorySchemaViewer*> i(memorySchemaViewers);
+  while (i.hasNext()) {
+    i.next()->autoUpdate();
   }
 }
 

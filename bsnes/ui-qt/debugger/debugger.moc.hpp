@@ -6,6 +6,7 @@ public:
   QMenu *menu_tools;
   QAction *menu_tools_breakpoint;
   QAction *menu_tools_memory;
+  QAction *menu_tools_memorySchemaViewer;
   QAction *menu_tools_propertiesViewer;
   QMenu *menu_ppu;
   QAction *menu_ppu_tileViewer;
@@ -20,7 +21,7 @@ public:
   QAction *menu_misc_saveSymbols;
   QAction *menu_misc_showHClocks;
   QAction *menu_misc_options;
-
+  
   QVBoxLayout *layout;
   QSplitter *consoleLayout;
   QTextEdit *console;
@@ -47,6 +48,7 @@ public:
   class SymbolMap *symbolsSA1;
   class SymbolMap *symbolsSMP;
   class SymbolMap *symbolsDSP;
+  class MemorySchema *memorySchema;
 
   void modifySystemState(unsigned);
   void echo(const char *message);
@@ -68,6 +70,7 @@ public slots:
   void stepToNMIAction();
   void stepToIRQAction();
   void createMemoryEditor();
+  void createMemorySchemaViewer();
 
 private:
   inline void switchWindow();

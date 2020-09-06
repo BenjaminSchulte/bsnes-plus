@@ -54,6 +54,7 @@ using namespace ruby;
 
   #include "debugger/tools/breakpoint.moc.hpp"
   #include "debugger/tools/memory.moc.hpp"
+  #include "debugger/tools/memory_schema_viewer.moc.hpp"
   #include "debugger/tools/properties.moc.hpp"
 
   #include "debugger/ppu/base-renderer.hpp"

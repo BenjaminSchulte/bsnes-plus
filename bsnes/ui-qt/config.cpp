@@ -148,14 +148,15 @@ Configuration::Configuration() {
   attach(geometry.cheatImportWindow = "", "geometry.cheatImportWindow");
   attach(geometry.soundViewerWindow = "", "geometry.soundViewerWindow");
 
-  attach(geometry.debugger         = "", "geometry.debugger");
-  attach(geometry.disassembler     = "", "geometry.disassembler");
-  attach(geometry.breakpointEditor = "", "geometry.breakpointEditor");
-  attach(geometry.memoryEditor     = "", "geometry.memoryEditor");
-  attach(geometry.propertiesViewer = "", "geometry.propertiesViewer");
-  attach(geometry.layerToggle      = "", "geometry.layerToggle");
-  attach(geometry.tileViewer       = "", "geometry.tileViewer");
-  attach(geometry.tilemapViewer    = "", "geometry.tilemapViewer");
-  attach(geometry.oamViewer        = "", "geometry.oamViewer");
-  attach(geometry.cgramViewer      = "", "geometry.cgramViewer");
+  attach(geometry.debugger           = "", "geometry.debugger");
+  attach(geometry.disassembler       = "", "geometry.disassembler");
+  attach(geometry.breakpointEditor   = "", "geometry.breakpointEditor");
+  attach(geometry.memoryEditor       = "", "geometry.memoryEditor");
+  attach(geometry.memorySchemaViewer = "", "geometry.memorySchemaViewer");
+  attach(geometry.propertiesViewer   = "", "geometry.propertiesViewer");
+  attach(geometry.layerToggle        = "", "geometry.layerToggle");
+  attach(geometry.tileViewer         = "", "geometry.tileViewer");
+  attach(geometry.tilemapViewer      = "", "geometry.tilemapViewer");
+  attach(geometry.oamViewer          = "", "geometry.oamViewer");
+  attach(geometry.cgramViewer        = "", "geometry.cgramViewer");
 }

@@ -5,6 +5,8 @@ introduce some new features and improvements, mostly aimed at debugging.
 
 ## What's new
 
+- Added memory schema viewer (See [docs/schema.md](docs/schema.md)) (only tested with linux, yet)
+
 - Improved debugger UI with register editing
 - Redesigned memory editor and breakpoint editor
 - Improved handling of address mirroring for breakpoints (extends to the entire address space, not just RAM)

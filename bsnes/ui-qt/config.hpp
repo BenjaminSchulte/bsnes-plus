@@ -102,6 +102,7 @@ public:
     string disassembler;
     string breakpointEditor;
     string memoryEditor;
+    string memorySchemaViewer;
     string propertiesViewer;
     string layerToggle;
     string tileViewer;

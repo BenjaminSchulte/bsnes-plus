@@ -1,0 +1,110 @@
+{
+  "name": "Seiken Densetsu 3 (Japan)",
+
+  "variables": {
+    "player1": {"name": "Player 1", "type": {"group": {"members": {
+      "hp": {"name": "HP", "type": "uint16", "offset": {"address": {"$": "7ff0f2"}}}
+    }}}},
+    "sprites": {"name": "Sprites", "offset": {"address": {"$": "00035B"}}, "type": {"linkedlist": {"to": "Sprite", "type": "uint16", "bank": 127, "nullable": true, "next": "next_sprite"}}}
+  },
+
+  "types": {
+    "Direction": {"enum": {
+      "bits": 2,
+      "values": {
+        "right": {"name": "Right", "value": 0},
+        "down": {"name": "Down", "value": 1},
+        "left": {"name": "Left", "value": 2},
+        "up": {"name": "Up", "value": 3}
+      }
+    }},
+
+    "Layer": {"enum": {
+      "bytes": 1,
+      "values": {
+        "none":  {"name": "None", "value": 0},
+        "lower": {"name": "Lower", "value": 32},
+        "upper": {"name": "Upper", "value": 64}
+      }
+    }},
+
+    "SpriteOamPartFlags": {"flags": {
+      "bytes": 1,
+      
+      "members": {
+        "name":     {"name": "OAM Second Table", "offset": 0, "bits": 1, "type": "boolean"},
+        "palette":  {"name": "Palette",          "offset": 1, "bits": 3, "type": "uint8"},
+        "priority": {"name": "Priority",         "offset": 4, "bits": 2, "type": "uint8"},
+        "flip_x":   {"name": "Flip X",           "offset": 6, "bits": 1, "type": "boolean"},
+        "flip_y":   {"name": "Flip Y",           "offset": 7, "bits": 1, "type": "boolean"}
+      }
+    }},
+
+    "SpriteRenderFlags": {"flags": {
+      "bits": 1,
+
+      "members": {
+        "flip_x": {"name": "Flip X", "offset": 6, "bits": 1, "type": "boolean"},
+        "flip_y": {"name": "Flip Y", "offset": 7, "bits": 1, "type": "boolean"}
+      }
+    }},
+
+    "SpriteFlags": {"flags": {
+      "bytes": 1,
+
+      "members": {
+      }
+    }},
+
+    "SpriteOamPart": {"struct": {
+      "bytes": 4,
+
+      "members": {
+        "x":     {"name": "X",         "offset": 0, "type": "int8"},
+        "y":     {"name": "Y",         "offset": 1, "type": "int8"},
+        "oam":   {"name": "OAM Index", "offset": 2, "type": "uint8"},
+        "flags": {"name": "Flags",     "offset": 3, "type": "SpriteOamPartFlags"}
+      }
+    }},
+
+    "Sprite": {"struct": {
+      "members": {
+        "next_sprite":     {"name": "Next Sprite",     "offset": 167, "type": {"pointer": {"to": "Sprite", "type": "uint16", "bank": "same", "nullable": true}}},
+        "previous_sprite": {"name": "Previous Sprite", "offset": 169, "type": {"pointer": {"to": "Sprite", "type": "uint16", "bank": "same", "nullable": true}}},
+
+        "flags": {"name": "Flags", "type": {"group": {"members": {
+          "render_flags":  {"name": "Render flags",    "offset": 141, "type": "SpriteRenderFlags"},
+          "sprite_flags":  {"name": "Sprite flags",    "offset": 164, "type": "SpriteFlags"}
+        }}}},
+
+        "position": {"name": "Position", "type": {"group": {"members": {
+          "direction":     {"name": "View Direction",  "offset": 16,  "type": "Direction"},
+          "layer":         {"name": "Layer",           "offset": 13,  "type": "Layer"},
+
+          "x_decimal":     {"name": "X (Decimal)",     "offset": 129, "type": "int16"},
+          "x":             {"name": "X",               "offset": 131, "type": "int16"},
+          "y_decimal":     {"name": "Y (Decimal)",     "offset": 133, "type": "int16"},
+          "y":             {"name": "Y",               "offset": 135, "type": "int16"},
+          "z":             {"name": "Z",               "offset": 137, "type": "int16"},
+
+          "y_modificator": {"name": "Y (Modificator)", "offset": 146, "type": "int16", "comment": "Used for stairs"},
+          "z_index":       {"name": "Z-Index",         "offset": 152, "type": "uint16"}
+        }}}},
+
+        "animation": {"name": "Animation", "type": {"group": {"members": {
+          "frame_id_pointer":          {"name": "Frame ID pointer",          "offset": 104, "type": {"pointer": {"to": "uint16", "type": "uint16", "bank": 215}}},
+          "frame_config_list_pointer": {"name": "Frame config list pointer", "offset": 111, "type": {"pointer": {"to": null, "type": "uint24"}}}
+        }}}},
+
+        "oam": {"name": "OAM", "type": {"group": {"members": {
+          "num_sprite_parts": {"name": "Num OAM parts", "offset": 205, "type": "uint8"},
+          "parts":            {"name": "Parts",         "offset": 206, "type": {"list": {"type": "SpriteOamPart", "length": {"value_of": "oam.num_sprite_parts"}, "max_length": 15}}}
+        }}}},
+
+        "unknown": {"name": "Unknown", "type": {"group": {"members": {
+          "0042": {"name": "0x0042", "offset": 66, "type": {"pointer": {"to": null, "type": "uint16", "bank": 212}}}
+        }}}}
+      }
+    }}
+  }
+}
