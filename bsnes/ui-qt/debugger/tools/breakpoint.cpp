@@ -162,10 +162,14 @@ QVariant BreakpointModel::data(const QModelIndex &index, int role) const {
       return (bool)(b.mode & (unsigned)SNES::Debugger::Breakpoint::Mode::Write);
     case BreakExecute:
       return (bool)(b.mode & (unsigned)SNES::Debugger::Breakpoint::Mode::Exec);
+    case BreakNotifyOnly:
+      return (bool)(b.notify_only);
     case BreakSource:
       if (role == Qt::EditRole) return (unsigned)b.source;
       if ((unsigned)b.source < sources.count()) return sources[(unsigned)b.source];
       break;
+    case BreakName:
+      return QString((const char*)b.name);
     }
     
   } else if (role == SymbolMapRole) {
@@ -190,13 +194,15 @@ QVariant BreakpointModel::headerData(int section, Qt::Orientation orientation, i
   if (role == Qt::DisplayRole) {
     if (orientation == Qt::Horizontal) {
       switch (section) {
-      case BreakAddrStart: return "Start";
-      case BreakAddrEnd:   return "End (optional)";
-      case BreakCompare:   return "Data";
-      case BreakRead:      return "R";
-      case BreakWrite:     return "W";
-      case BreakExecute:   return "X";
-      case BreakSource:    return "Source";
+      case BreakAddrStart:  return "Start";
+      case BreakAddrEnd:    return "End (optional)";
+      case BreakCompare:    return "Data";
+      case BreakRead:       return "R";
+      case BreakWrite:      return "W";
+      case BreakExecute:    return "X";
+      case BreakNotifyOnly: return "Notify";
+      case BreakSource:     return "Source";
+      case BreakName:       return "Comment";
       }
     } else {
       return QString::number(section);
@@ -255,6 +261,11 @@ bool BreakpointModel::setData(const QModelIndex &index, const QVariant &value, i
       emit dataChanged(index, index);
       return true;
       
+    case BreakNotifyOnly:
+      b.notify_only = value.toBool();
+      emit dataChanged(index, index);
+      return true;
+      
     case BreakExecute:
       if (value.toBool())
         b.mode |= (unsigned)SNES::Debugger::Breakpoint::Mode::Exec;
@@ -267,6 +278,10 @@ bool BreakpointModel::setData(const QModelIndex &index, const QVariant &value, i
       b.source = (SNES::Debugger::Breakpoint::Source)value.toInt();
       // also refresh start+end addresses (for formatting/labels)
       emit dataChanged(this->index(index.row(), BreakAddrStart), index);
+      return true;
+
+    case BreakName:
+      b.name = value.toString().toStdString().c_str();
       return true;
     }
   }
@@ -339,12 +354,14 @@ BreakpointEditor::BreakpointEditor() {
   table->setItemDelegateForColumn(BreakpointModel::BreakRead, checkDelegate);
   table->setItemDelegateForColumn(BreakpointModel::BreakWrite, checkDelegate);
   table->setItemDelegateForColumn(BreakpointModel::BreakExecute, checkDelegate);
+  table->setItemDelegateForColumn(BreakpointModel::BreakNotifyOnly, checkDelegate);
   
   table->setItemDelegateForColumn(BreakpointModel::BreakAddrStart, new SymbolDelegate(this));
   table->setItemDelegateForColumn(BreakpointModel::BreakAddrEnd, new SymbolDelegate(this));
   
   table->setItemDelegateForColumn(BreakpointModel::BreakCompare, new ComboDelegate(BreakpointModel::compares, this));
   table->setItemDelegateForColumn(BreakpointModel::BreakSource, new ComboDelegate(BreakpointModel::sources, this));
+  //table->setItemDelegateForColumn(BreakpointModel::BreakName, new ComboDelegate(BreakpointModel::sources, this));
   
   QHeaderView *header = table->horizontalHeader();
   header->setSectionsClickable(false);
@@ -355,6 +372,8 @@ BreakpointEditor::BreakpointEditor() {
   header->setSectionResizeMode(BreakpointModel::BreakRead, QHeaderView::ResizeToContents);
   header->setSectionResizeMode(BreakpointModel::BreakWrite, QHeaderView::ResizeToContents);
   header->setSectionResizeMode(BreakpointModel::BreakExecute, QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(BreakpointModel::BreakNotifyOnly, QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(BreakpointModel::BreakSource, QHeaderView::ResizeToContents);
   
   header = table->verticalHeader();
   header->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -413,7 +432,7 @@ void BreakpointEditor::setBreakOnBrk(bool b) {
   SNES::debugger.break_on_brk = b;
 }
 
-void BreakpointEditor::addBreakpoint(const string& addr, const string& mode, const string& source) {
+void BreakpointEditor::addBreakpoint(const string& addr, const string& mode, const string& source, const string& comment) {
   if (addr == "") return;
   
   int row = model->rowCount();
@@ -429,6 +448,8 @@ void BreakpointEditor::addBreakpoint(const string& addr, const string& mode, con
     model->setData(model->index(row, BreakpointModel::BreakRead), (bool)modeStr.position("r"));
     model->setData(model->index(row, BreakpointModel::BreakWrite), (bool)modeStr.position("w"));
     model->setData(model->index(row, BreakpointModel::BreakExecute), (bool)modeStr.position("x"));
+    model->setData(model->index(row, BreakpointModel::BreakNotifyOnly), (bool)modeStr.position("n"));
+    model->setData(model->index(row, BreakpointModel::BreakName), QString((const char*)comment));
 
     string addrStr;
     lstring addresses;
@@ -456,12 +477,16 @@ void BreakpointEditor::addBreakpoint(const string& addr, const string& mode, con
 }
 
 void BreakpointEditor::addBreakpoint(const string& breakpoint) {
+  lstring comments;
+  comments.split<2>("#", breakpoint);
+  if(comments.size() == 1) { comments.append(""); }
+
   lstring param;
-  param.split<3>(":", breakpoint);
+  param.split<3>(":", comments[0]);
   if(param.size() == 1) { param.append("rwx"); }
   if(param.size() == 2) { param.append("cpu"); }
   
-  this->addBreakpoint(param[0], param[1], param[2]);
+  this->addBreakpoint(param[0], param[1], param[2], comments[1]);
 }
 
 void BreakpointEditor::removeBreakpoint(uint32_t index) {
@@ -503,11 +528,19 @@ string BreakpointEditor::toStrings() const {
     if (b.mode & (unsigned)SNES::Debugger::Breakpoint::Mode::Read) breakpoints << "r";
     if (b.mode & (unsigned)SNES::Debugger::Breakpoint::Mode::Write) breakpoints << "w";
     if (b.mode & (unsigned)SNES::Debugger::Breakpoint::Mode::Exec) breakpoints << "x";
+    if (b.notify_only) breakpoints << "n";
     
-    if ((unsigned)b.source < sources.size())
-      breakpoints << ":" << sources[(unsigned)b.source] << "\n";
-    else
-      breakpoints << ":cpu\n";
+    if ((unsigned)b.source < sources.size()) {
+      breakpoints << ":" << sources[(unsigned)b.source];
+    } else {
+      breakpoints << ":cpu";
+    }
+
+    if (b.name) {
+      breakpoints << "#" << b.name;
+    }
+
+    breakpoints << "\n";
   }
   
   return breakpoints;

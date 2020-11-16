@@ -31,7 +31,9 @@ public:
     BreakRead,
     BreakWrite,
     BreakExecute,
+    BreakNotifyOnly,
     BreakSource,
+    BreakName,
 
     BreakColumnCount
   };
@@ -79,7 +81,10 @@ public:
   
   BreakpointEditor();
 
-  void addBreakpoint(const string& addr, const string& mode, const string& source);
+  void addBreakpoint(const string& addr, const string& mode, const string& source, const string& comment);
+  inline void addBreakpoint(const string& addr, const string& mode, const string& source) {
+    addBreakpoint(addr, mode, source, "");
+  }
   void addBreakpoint(const string& breakpoint);
   void removeBreakpoint(uint32_t index);
   void setBreakOnBrk(bool b);

@@ -166,7 +166,13 @@ void DisassemblerView::updateVisibleLines() {
       bottomLineAddress = address;
       
       if (address == currentAddress) {
-        stopped = true; // no next instruction found
+        if (address < processor->getCurrentAddress()) {
+          processor->analyze(address);
+          // The code could not be processed for some reason
+          address = processor->getCurrentAddress();
+        } else {
+          stopped = true; // no next instruction found
+        }
       }
     }
   }

@@ -25,6 +25,9 @@ public:
     
     enum class Mode : unsigned { Exec = 1, Read = 2, Write = 4 };
     unsigned mode = 0;
+
+    bool notify_only = false;
+    string name;
     
     enum class Source : unsigned {
       CPUBus,
@@ -42,6 +45,9 @@ public:
   linear_vector<Breakpoint> breakpoint;
   unsigned breakpoint_hit;
   void breakpoint_test(Breakpoint::Source source, Breakpoint::Mode mode, unsigned addr, uint8 data);
+  void breakpoint_notify(Breakpoint::Source source, unsigned addr, const string &name);
+  int breakpoint_command(Breakpoint::Source source, const string &command, bool &mute, bool &cancel);
+  int breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel);
 
   bool step_cpu;
   bool step_smp;

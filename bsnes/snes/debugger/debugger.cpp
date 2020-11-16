@@ -19,6 +19,116 @@ bool Debugger::Breakpoint::operator!=(const uint8& data) const {
   return !operator==(data);
 }
 
+int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel) {
+  if (command[0] == '$') { return hex(substr(command, 1, command.length() - 1)); }
+  if (command[0] >= '0' && command[0] <= '9') { int result=0; strint(command, result); return result; }
+
+  if (command == "A") { return cpu.regs.a & (cpu.regs.p.m ? 0xFF : 0xFFFF); }
+  if (command == "X") { return cpu.regs.x & (cpu.regs.p.x ? 0xFF : 0xFFFF); }
+  if (command == "Y") { return cpu.regs.y & (cpu.regs.p.x ? 0xFF : 0xFFFF); }
+  if (command == "A16") { return cpu.regs.a; }
+  if (command == "X16") { return cpu.regs.x; }
+  if (command == "Y16") { return cpu.regs.y; }
+  if (command == "DB") { return cpu.regs.db; }
+  if (command == "D") { return cpu.regs.d; }
+  if (command == "S") { return cpu.regs.s; }
+  if (command == "PC") { return cpu.regs.pc; }
+  if (command == "P") { return cpu.regs.p; }
+
+  uint32_t left = params.size() >= 1 ? breakpoint_command(source, params[0], mute, cancel) : 0;
+  if (command == "muteif") {
+    cancel = !!left;
+    mute = true;
+    return 0;
+  }
+  if (command == "byte") {
+    SNES::debugger.bus_access = true;
+    uint8_t data = SNES::debugger.read(SNES::Debugger::MemorySource::CPUBus, left);
+    SNES::debugger.bus_access = false;
+    return data;
+  }
+
+  uint32_t right = params.size() >= 2 ? breakpoint_command(source, params[1], mute, cancel) : 0;
+  if (command == "add") { return left + right; }
+  if (command == "and") { return left & right; }
+  if (command == "equ") { return (left == right) ? 1 : 0; }
+  if (command == "long") { return left | right << 16; }
+
+  puts(string("Unknown debug command: ").append(command));
+  return 0;
+}
+
+int Debugger::breakpoint_command(Breakpoint::Source source, const string &line, bool &mute, bool &cancel) {
+  optional<unsigned> optParamStart(line.position("("));
+  lstring params;
+  string command(line);
+
+  if ((bool)optParamStart) {
+    unsigned paramStart = optParamStart();
+    command = substr(line, 0, paramStart).trim();
+
+    const char *lineText = line;
+    int lineLength = line.length();
+    int depth = 1;
+    int left = paramStart + 1;
+    for (int right = paramStart + 1; right < lineLength; right++) {
+      char c = lineText[right];
+
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        if (--depth == 0) {
+          if (left != right) { params.append(substr(lineText, left, right - left).trim()); }
+          left = lineLength + 1;
+          break;
+        }
+      } else if (c == ',' && depth == 1) {
+        if (left != right) { params.append(substr(lineText, left, right - left).trim()); }
+        left = right + 1;
+      }
+    }
+
+    if (left + 1 < lineLength) { params.append(substr(lineText, left, lineLength - left).trim()); }
+  }
+
+  return breakpoint_exec_command(source, command, params, mute, cancel);
+}
+
+void Debugger::breakpoint_notify(Breakpoint::Source source, unsigned addr, const string &name) {
+  if (!name) {
+    puts(string("Breakpoint hit at ").append(hex<6>(addr)));
+    return;
+  }
+
+  string result;
+  const char *data = name;
+  int len = name.length();
+  int left = 0;
+  for (int right=0; right<len; right++) {
+    if (data[right] == '{') {
+      if (left != right) { result << substr(data, left, right - left); }
+      left = right;
+    } else if (data[right] == '}') {
+      if (data[left] == '{') {
+        bool mute = false;
+        bool cancel = false;
+        int number = breakpoint_command(source, substr(data, left + 1, right - left - 1), mute, cancel);
+        if (cancel) {
+          return;
+        }
+        if (!mute) {
+          result << hex(number);
+        }
+        left = right + 1;
+      }
+    }
+  }
+
+  if (left + 1 < len) { result << substr(data, left, len - left); }
+
+  puts(result);
+}
+
 void Debugger::breakpoint_test(Debugger::Breakpoint::Source source, Debugger::Breakpoint::Mode mode, unsigned addr, uint8 data) {
   for(unsigned i = 0; i < breakpoint.size(); i++) {
 
@@ -49,6 +159,11 @@ void Debugger::breakpoint_test(Debugger::Breakpoint::Source source, Debugger::Br
       }
     }
     if (addr_start > addr_end) continue;
+
+    if (breakpoint[i].notify_only) {
+      breakpoint_notify(source, addr, breakpoint[i].name);
+      continue;
+    }
     
     breakpoint[i].counter++;
     breakpoint_hit = i;

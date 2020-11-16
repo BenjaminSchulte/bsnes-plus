@@ -1,5 +1,6 @@
 void PPUcounter::tick() {
   status.hcounter += 2;  //increment by smallest unit of time
+  status.clocks += 2;
   if(status.hcounter == lineclocks()) {
     status.hcounter = 0;
     vcounter_tick();
@@ -8,6 +9,7 @@ void PPUcounter::tick() {
 
 void PPUcounter::tick(unsigned clocks) {
   status.hcounter += clocks;
+  status.clocks += clocks;
   if(status.hcounter >= lineclocks()) {
     status.hcounter -= lineclocks();
     vcounter_tick();
@@ -55,6 +57,7 @@ uint8  PPUcounter::framecounter() const { return status.frame; }
 uint16 PPUcounter::lineclocks() const { return status.lineclocks; }
 uint16 PPUcounter::prev_lineclocks() const { return status.prev_lineclocks; }
 uint16 PPUcounter::fieldlines() const { return status.fieldlines[status.field]; }
+uint32 PPUcounter::clocks() const { return status.clocks; }
 
 uint16 PPUcounter::vcounter_future(unsigned offset) const {
   if(hcounter() + offset < lineclocks()) return vcounter();
@@ -102,4 +105,5 @@ void PPUcounter::reset() {
   status.lineclocks    = status.prev_lineclocks = 1364;
   status.fieldlines[0] = status.fieldlines[1] = (system.region() == System::Region::NTSC ? 262 : 312);
   status.field         = 0;
+  status.clocks        = 0;
 }

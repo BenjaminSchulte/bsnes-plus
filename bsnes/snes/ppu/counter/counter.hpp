@@ -19,6 +19,7 @@ public:
   alwaysinline uint16 vcounter() const;
   alwaysinline uint16 hcounter() const;
   alwaysinline uint8  framecounter() const;
+  alwaysinline uint32 clocks() const;
   alwaysinline uint16 lineclocks() const;
   alwaysinline uint16 prev_lineclocks() const;
   alwaysinline uint16 fieldlines() const;
@@ -44,6 +45,7 @@ private:
     uint16 lineclocks;
     uint16 prev_lineclocks;
     uint16 fieldlines[2];
+    uint32 clocks;
     bool field;
   } status;
 };

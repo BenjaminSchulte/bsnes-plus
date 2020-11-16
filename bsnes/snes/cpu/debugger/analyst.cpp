@@ -36,6 +36,7 @@ uint32_t CPUAnalyst::performAnalysis(uint32_t address, CPUAnalystState &state, b
   linear_vector<CPUAnalystState> stackP;
   uint32_t maxMethodSize = 0x1000;
   uint32_t numRoutines = 1;
+  bool lastBreak = false;
 
   while (--maxMethodSize) {
     address = address & 0xFFFFFF;
@@ -61,7 +62,16 @@ uint32_t CPUAnalyst::performAnalysis(uint32_t address, CPUAnalystState &state, b
       stackP.remove(index);
     }
 
-    if (op.breaks() || op.halts()) {
+    if (op.breaks()) {
+      if (lastBreak) {
+        break;
+      }
+      lastBreak = true;
+    } else {
+      lastBreak = false;
+    }
+
+    if (op.halts()) {
       break;
     }
 
