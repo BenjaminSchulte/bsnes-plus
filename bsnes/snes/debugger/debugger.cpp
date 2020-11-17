@@ -34,6 +34,8 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
   if (command == "S") { return cpu.regs.s; }
   if (command == "PC") { return cpu.regs.pc; }
   if (command == "P") { return cpu.regs.p; }
+  
+  if (command == "vcounter") { return ppu.vcounter(); }
 
   uint32_t left = params.size() >= 1 ? breakpoint_command(source, params[0], mute, cancel) : 0;
   if (command == "muteif") {
@@ -47,6 +49,14 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
     SNES::debugger.bus_access = false;
     return data;
   }
+  if (command == "word") {
+    SNES::debugger.bus_access = true;
+    uint8_t bl = SNES::debugger.read(SNES::Debugger::MemorySource::CPUBus, left);
+    uint8_t bh = SNES::debugger.read(SNES::Debugger::MemorySource::CPUBus, left + 1);
+    SNES::debugger.bus_access = false;
+    return bl | bh << 8;
+  }
+
 
   uint32_t right = params.size() >= 2 ? breakpoint_command(source, params[1], mute, cancel) : 0;
   if (command == "add") { return left + right; }
