@@ -1,5 +1,7 @@
 #ifdef SYSTEM_CPP
 
+#define DEBUG_FILE_OUT_NAME "bsnes_debug.out"
+
 Debugger debugger;
 
 bool Debugger::Breakpoint::operator==(const uint8& data) const {
@@ -36,6 +38,8 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
   if (command == "P") { return cpu.regs.p; }
   
   if (command == "vcounter") { return ppu.vcounter(); }
+  if (command == "frame") { return cpu.framecounter(); }
+  if (command == "clock") { return cpu.clocks(); }
 
   uint32_t left = params.size() >= 1 ? breakpoint_command(source, params[0], mute, cancel) : 0;
   if (command == "muteif") {
@@ -55,6 +59,21 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
     uint8_t bh = SNES::debugger.read(SNES::Debugger::MemorySource::CPUBus, left + 1);
     SNES::debugger.bus_access = false;
     return bl | bh << 8;
+  }
+  if (command == "put_byte") {
+    debug_out_file = debug_out_file ? debug_out_file : fopen(DEBUG_FILE_OUT_NAME, "w");
+    if (debug_out_file) fwrite(&left, 1, 1, debug_out_file);
+    return left;
+  }
+  if (command == "put_word") {
+    debug_out_file = debug_out_file ? debug_out_file : fopen(DEBUG_FILE_OUT_NAME, "w");
+    if (debug_out_file) fwrite(&left, 2, 1, debug_out_file);
+    return left;
+  }
+  if (command == "put_int") {
+    debug_out_file = debug_out_file ? debug_out_file : fopen(DEBUG_FILE_OUT_NAME, "w");
+    if (debug_out_file) fwrite(&left, 4, 1, debug_out_file);
+    return left;
   }
 
 
@@ -331,6 +350,12 @@ Debugger::Debugger() {
   break_on_brk = false;
 
   step_type = StepType::None;
+}
+
+Debugger::~Debugger() {
+  if (debug_out_file) {
+    fclose(debug_out_file);
+  }
 }
 
 #endif

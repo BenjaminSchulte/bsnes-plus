@@ -57,6 +57,7 @@ public:
   bool bus_access;
   bool break_on_wdm;
   bool break_on_brk;
+  FILE *debug_out_file = nullptr;
 
   enum class StepType : unsigned {
     None, StepToNMI, StepToIRQ, StepToVBlank, StepToHBlank, StepInto, StepOver, StepOut
@@ -84,6 +85,7 @@ public:
   void write(MemorySource, unsigned addr, uint8 data);
 
   Debugger();
+  ~Debugger();
 };
 
 extern Debugger debugger;
