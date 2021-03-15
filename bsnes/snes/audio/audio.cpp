@@ -107,7 +107,7 @@ void Audio::flush() {
       left  += (int16)(sample >> 0);
       right += (int16)(sample >> 16);
     }
-
+    
     system.interface->audio_sample(
       sclamp<16>(left / 2),
       sclamp<16>(right / 2)

@@ -25,18 +25,32 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
   if (command[0] == '$') { return hex(substr(command, 1, command.length() - 1)); }
   if (command[0] >= '0' && command[0] <= '9') { int result=0; strint(command, result); return result; }
 
-  if (command == "A") { return cpu.regs.a & (cpu.regs.p.m ? 0xFF : 0xFFFF); }
-  if (command == "X") { return cpu.regs.x & (cpu.regs.p.x ? 0xFF : 0xFFFF); }
-  if (command == "Y") { return cpu.regs.y & (cpu.regs.p.x ? 0xFF : 0xFFFF); }
-  if (command == "A16") { return cpu.regs.a; }
-  if (command == "X16") { return cpu.regs.x; }
-  if (command == "Y16") { return cpu.regs.y; }
-  if (command == "DB") { return cpu.regs.db; }
-  if (command == "D") { return cpu.regs.d; }
-  if (command == "S") { return cpu.regs.s; }
-  if (command == "PC") { return cpu.regs.pc; }
-  if (command == "P") { return cpu.regs.p; }
-  
+  if (source == Breakpoint::Source::CPUBus) {
+    if (command == "A") { return cpu.regs.a & (cpu.regs.p.m ? 0xFF : 0xFFFF); }
+    if (command == "X") { return cpu.regs.x & (cpu.regs.p.x ? 0xFF : 0xFFFF); }
+    if (command == "Y") { return cpu.regs.y & (cpu.regs.p.x ? 0xFF : 0xFFFF); }
+    if (command == "A16") { return cpu.regs.a; }
+    if (command == "X16") { return cpu.regs.x; }
+    if (command == "Y16") { return cpu.regs.y; }
+    if (command == "DB") { return cpu.regs.db; }
+    if (command == "D") { return cpu.regs.d; }
+    if (command == "S") { return cpu.regs.s; }
+    if (command == "PC") { return cpu.regs.pc; }
+    if (command == "P") { return cpu.regs.p; }
+  } else if (source == Breakpoint::Source::SA1Bus) {
+    if (command == "A") { return sa1.regs.a & (sa1.regs.p.m ? 0xFF : 0xFFFF); }
+    if (command == "X") { return sa1.regs.x & (sa1.regs.p.x ? 0xFF : 0xFFFF); }
+    if (command == "Y") { return sa1.regs.y & (sa1.regs.p.x ? 0xFF : 0xFFFF); }
+    if (command == "A16") { return sa1.regs.a; }
+    if (command == "X16") { return sa1.regs.x; }
+    if (command == "Y16") { return sa1.regs.y; }
+    if (command == "DB") { return sa1.regs.db; }
+    if (command == "D") { return sa1.regs.d; }
+    if (command == "S") { return sa1.regs.s; }
+    if (command == "PC") { return sa1.regs.pc; }
+    if (command == "P") { return sa1.regs.p; }
+  }
+
   if (command == "vcounter") { return ppu.vcounter(); }
   if (command == "frame") { return cpu.framecounter(); }
   if (command == "clock") { return cpu.clocks(); }
@@ -79,7 +93,9 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
 
   uint32_t right = params.size() >= 2 ? breakpoint_command(source, params[1], mute, cancel) : 0;
   if (command == "add") { return left + right; }
+  if (command == "sub") { return left - right; }
   if (command == "and") { return left & right; }
+  if (command == "or") { return left | right; }
   if (command == "equ") { return (left == right) ? 1 : 0; }
   if (command == "long") { return left | right << 16; }
 
