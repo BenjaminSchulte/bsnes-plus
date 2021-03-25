@@ -578,9 +578,9 @@ void Debugger::event() {
       } else if (n == SNES::Debugger::SoftBreakSA1) {
         source = SNES::Debugger::Breakpoint::Source::SA1Bus;
         echo(string() << "Software breakpoint hit (SA-1).<br>");
-      } else if (n < SNES::debugger.breakpoint.size()) {
-        source = SNES::debugger.breakpoint[n].source;
-        echo(string() << "Breakpoint " << n << " hit (" << SNES::debugger.breakpoint[n].counter << ").<br>");
+      } else if (n < SNES::debugger.range_breakpoint.size()) {
+        source = SNES::debugger.range_breakpoint[n].source;
+        echo(string() << "Breakpoint " << n << " hit (" << SNES::debugger.range_breakpoint[n].counter << ").<br>");
       } else break;
         
       if(source == SNES::Debugger::Breakpoint::Source::CPUBus

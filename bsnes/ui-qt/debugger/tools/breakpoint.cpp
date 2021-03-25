@@ -95,7 +95,7 @@ BreakpointModel::BreakpointModel(QObject* parent)
 }
 
 int BreakpointModel::rowCount(const QModelIndex& parent) const {
-  return parent.isValid() ? 0 : SNES::debugger.breakpoint.size();
+  return parent.isValid() ? 0 : SNES::debugger.range_breakpoint.size();
 }
 
 int BreakpointModel::columnCount(const QModelIndex& parent) const {
@@ -132,10 +132,10 @@ QString BreakpointModel::displayAddr(unsigned addr, SNES::Debugger::Breakpoint::
 }
 
 QVariant BreakpointModel::data(const QModelIndex &index, int role) const {
-  if (index.row() >= SNES::debugger.breakpoint.size())
+  if (index.row() >= SNES::debugger.range_breakpoint.size())
     return QVariant();
 
-  const SNES::Debugger::Breakpoint& b = SNES::debugger.breakpoint[index.row()];
+  const SNES::Debugger::Breakpoint& b = SNES::debugger.range_breakpoint[index.row()];
     
   if (role == Qt::DisplayRole || role == Qt::EditRole || role == Qt::ToolTipRole) {
     switch (index.column()) {
@@ -212,23 +212,51 @@ QVariant BreakpointModel::headerData(int section, Qt::Orientation orientation, i
   return QVariant();
 }
 
+void BreakpointModel::addToLookup(int index, unsigned start, unsigned end) {
+  if (end != 0) {
+    return;
+  }
+
+  SNES::debugger.breakpoint_index[start].push_back(index);
+}
+
+void BreakpointModel::removeFromLookup(int index, unsigned start, unsigned end) {
+  std::map<unsigned, std::vector<int> >::iterator it = SNES::debugger.breakpoint_index.find(start);
+  if (it == SNES::debugger.breakpoint_index.end()) {
+    return;
+  }
+
+  std::vector<int>::iterator it2 = std::find(it->second.begin(), it->second.end(), start);
+  if (it2 == it->second.end()) {
+    return;
+  }
+
+  it->second.erase(it2);
+}
+
 bool BreakpointModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-  if (role == Qt::EditRole && index.row() < SNES::debugger.breakpoint.size()) {
-    SNES::Debugger::Breakpoint& b = SNES::debugger.breakpoint[index.row()];
+  if (role == Qt::EditRole && index.row() < SNES::debugger.range_breakpoint.size()) {
+    SNES::Debugger::Breakpoint& b = SNES::debugger.range_breakpoint[index.row()];
     
     switch (index.column()) {
     case BreakAddrStart: 
       // TODO allow setting by symbol name
+      removeFromLookup(index.row(), b.addr, b.addr_end);
+      
       b.addr = hex(value.toString().toUtf8().data()) & 0xffffff;
+
+      addToLookup(index.row(), b.addr, b.addr_end);
       emit dataChanged(index, index);
       return true;
       
     case BreakAddrEnd:
+      removeFromLookup(index.row(), b.addr, b.addr_end);
       // TODO allow setting by symbol name
       if (!value.toString().isEmpty())
         b.addr_end = hex(value.toString().toUtf8().data()) & 0xffffff;
       else
         b.addr_end = 0;
+      addToLookup(index.row(), b.addr, b.addr_end);
       emit dataChanged(index, index);
       return true;
       
@@ -293,11 +321,21 @@ Qt::ItemFlags BreakpointModel::flags(const QModelIndex &index) const {
   return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
 }
 
+void BreakpointModel::recreateLookupTable() {
+  SNES::debugger.breakpoint_index.clear();
+
+  for (int i=0; i<SNES::debugger.range_breakpoint.size(); i++) {
+    addToLookup(i, SNES::debugger.range_breakpoint[i].addr, SNES::debugger.range_breakpoint[i].addr_end);
+  }
+}
+
 bool BreakpointModel::insertRows(int row, int count, const QModelIndex &parent) {
   if (!parent.isValid() && row <= rowCount() && count > 0) {
     beginInsertRows(parent, row, row + count - 1);
-    while (count--)
-      SNES::debugger.breakpoint.insert(row, SNES::Debugger::Breakpoint());
+    while (count--) {
+      SNES::debugger.range_breakpoint.insert(row, SNES::Debugger::Breakpoint());
+    }
+    recreateLookupTable();
     endInsertRows();
     
     return true;
@@ -309,7 +347,8 @@ bool BreakpointModel::insertRows(int row, int count, const QModelIndex &parent) 
 bool BreakpointModel::removeRows(int row, int count, const QModelIndex &parent) {
   if (!parent.isValid() && row <= rowCount() && count > 0) {
     beginRemoveRows(parent, row, row + count - 1);
-    SNES::debugger.breakpoint.remove(row, count);
+    SNES::debugger.range_breakpoint.remove(row, count);
+    recreateLookupTable();
     endRemoveRows();
     
     return true;
@@ -494,8 +533,8 @@ void BreakpointEditor::removeBreakpoint(uint32_t index) {
 }
 
 int32_t BreakpointEditor::indexOfBreakpointExec(uint32_t addr, const string &source) const {
-  for(unsigned n = 0; n < SNES::debugger.breakpoint.size(); n++) {
-    const SNES::Debugger::Breakpoint &b = SNES::debugger.breakpoint[n];
+  for(unsigned n = 0; n < SNES::debugger.range_breakpoint.size(); n++) {
+    const SNES::Debugger::Breakpoint &b = SNES::debugger.range_breakpoint[n];
     if((b.mode & (unsigned)SNES::Debugger::Breakpoint::Mode::Exec) 
        && addr >= b.addr 
        && addr <= (b.addr_end ? b.addr_end : b.addr)
@@ -510,8 +549,8 @@ int32_t BreakpointEditor::indexOfBreakpointExec(uint32_t addr, const string &sou
 string BreakpointEditor::toStrings() const {
   string breakpoints;
   
-  for(unsigned n = 0; n < SNES::debugger.breakpoint.size(); n++) {
-    const SNES::Debugger::Breakpoint &b = SNES::debugger.breakpoint[n];
+  for(unsigned n = 0; n < SNES::debugger.range_breakpoint.size(); n++) {
+    const SNES::Debugger::Breakpoint &b = SNES::debugger.range_breakpoint[n];
     
     breakpoints << hex<6>(b.addr);
     

@@ -61,6 +61,9 @@ public:
   bool removeRows(int row, int count, const QModelIndex &parent = QModelIndex());
 
 private:
+  void addToLookup(int index, unsigned start, unsigned end);
+  void removeFromLookup(int index, unsigned start, unsigned end);
+  void recreateLookupTable();
   QString displayAddr(unsigned addr, SNES::Debugger::Breakpoint::Source source) const;
 };
 

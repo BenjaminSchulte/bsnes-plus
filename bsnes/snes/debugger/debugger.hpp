@@ -1,3 +1,4 @@
+
 class Debugger {
 public:
   enum class BreakEvent : unsigned {
@@ -42,9 +43,11 @@ public:
     } source = Source::CPUBus;
     unsigned counter = 0;  //number of times breakpoint has been hit since being set
   };
-  linear_vector<Breakpoint> breakpoint;
+  std::map<unsigned, std::vector<int> > breakpoint_index;
+  linear_vector<Breakpoint> range_breakpoint;
   unsigned breakpoint_hit;
   void breakpoint_test(Breakpoint::Source source, Breakpoint::Mode mode, unsigned addr, uint8 data);
+  bool breakpoint_item_test(int index, Breakpoint::Source source, Breakpoint::Mode mode, unsigned addr, uint8 data);
   void breakpoint_notify(Breakpoint::Source source, unsigned addr, const string &name);
   int breakpoint_command(Breakpoint::Source source, const string &command, bool &mute, bool &cancel);
   int breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel);

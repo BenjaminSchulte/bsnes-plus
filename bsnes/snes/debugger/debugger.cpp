@@ -174,47 +174,72 @@ void Debugger::breakpoint_notify(Breakpoint::Source source, unsigned addr, const
   puts(result);
 }
 
+bool Debugger::breakpoint_item_test(int i, Breakpoint::Source source, Breakpoint::Mode mode, unsigned addr, uint8 data) {
+  if((range_breakpoint[i].mode & (unsigned)mode) == 0) return false;
+  if(range_breakpoint[i].source != source) return false;
+  if(range_breakpoint[i] != data) return false;
+  
+  // account for address mirroring on the S-CPU and SA-1 (and other) buses
+  // (with 64kb granularity for ranged breakpoints)
+  unsigned addr_start = (range_breakpoint[i].addr & 0xff0000) | (addr & 0xffff);
+  if (addr_start < range_breakpoint[i].addr) {
+    addr_start += 1<<16;
+  }
+  unsigned addr_end = range_breakpoint[i].addr;
+  if (range_breakpoint[i].addr_end > range_breakpoint[i].addr) {
+    addr_end = range_breakpoint[i].addr_end;
+  }
+  
+  for (; addr_start <= addr_end; addr_start += 1<<16) {
+    if (source == Debugger::Breakpoint::Source::CPUBus) {
+      if (bus.is_mirror(addr_start, addr)) break;
+    } else if (source == Debugger::Breakpoint::Source::SA1Bus) {
+      if (sa1bus.is_mirror(addr_start, addr)) break;
+    } else if (source == Debugger::Breakpoint::Source::SFXBus) {
+      if (superfxbus.is_mirror(addr_start, addr)) break;
+    } else {
+      if (addr_start == addr) break;
+    }
+  }
+  if (addr_start > addr_end) return false;
+
+  if (range_breakpoint[i].notify_only) {
+    breakpoint_notify(source, addr, range_breakpoint[i].name);
+    return true;
+  }
+  
+  range_breakpoint[i].counter++;
+  breakpoint_hit = i;
+  break_event = BreakEvent::BreakpointHit;
+  scheduler.exit(Scheduler::ExitReason::DebuggerEvent);
+  return true;
+}
+
 void Debugger::breakpoint_test(Debugger::Breakpoint::Source source, Debugger::Breakpoint::Mode mode, unsigned addr, uint8 data) {
-  for(unsigned i = 0; i < breakpoint.size(); i++) {
+  std::map<unsigned, std::vector<int> >::iterator it(breakpoint_index.find(addr));
 
-    if((breakpoint[i].mode & (unsigned)mode) == 0) continue;
-    if(breakpoint[i].source != source) continue;
-    if(breakpoint[i] != data) continue;
-    
-    // account for address mirroring on the S-CPU and SA-1 (and other) buses
-    // (with 64kb granularity for ranged breakpoints)
-    unsigned addr_start = (breakpoint[i].addr & 0xff0000) | (addr & 0xffff);
-    if (addr_start < breakpoint[i].addr) {
-      addr_start += 1<<16;
-    }
-    unsigned addr_end = breakpoint[i].addr;
-    if (breakpoint[i].addr_end > breakpoint[i].addr) {
-      addr_end = breakpoint[i].addr_end;
-    }
-    
-    for (; addr_start <= addr_end; addr_start += 1<<16) {
-      if (source == Debugger::Breakpoint::Source::CPUBus) {
-        if (bus.is_mirror(addr_start, addr)) break;
-      } else if (source == Debugger::Breakpoint::Source::SA1Bus) {
-        if (sa1bus.is_mirror(addr_start, addr)) break;
-      } else if (source == Debugger::Breakpoint::Source::SFXBus) {
-        if (superfxbus.is_mirror(addr_start, addr)) break;
-      } else {
-        if (addr_start == addr) break;
+  if (it != breakpoint_index.end()) {
+    for (int index : it->second) {
+      if (index < 0 || index >= breakpoint_index.size()) {
+        continue;
       }
-    }
-    if (addr_start > addr_end) continue;
 
-    if (breakpoint[i].notify_only) {
-      breakpoint_notify(source, addr, breakpoint[i].name);
-      continue;
+      if (range_breakpoint[index].addr != addr) {
+        puts("BREAKPOINT INDEX IS INVALID");
+        continue;
+      }
+
+      breakpoint_item_test(index, source, mode, addr, data);
     }
+    return;
+  }
+
+  for(unsigned i = 0; i < breakpoint_index.size(); i++) {
+    if(range_breakpoint[i].addr_end == 0) continue;
     
-    breakpoint[i].counter++;
-    breakpoint_hit = i;
-    break_event = BreakEvent::BreakpointHit;
-    scheduler.exit(Scheduler::ExitReason::DebuggerEvent);
-    break;
+    if (breakpoint_item_test(i, source, mode, addr, data)) {
+      break;
+    }
   }
 }
 

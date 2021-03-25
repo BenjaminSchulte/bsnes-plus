@@ -15,6 +15,8 @@ namespace SNES {
 
 #include <libco/libco.h>
 
+#include <map>
+#include <vector>
 #include <nall/algorithm.hpp>
 #include <nall/any.hpp>
 #include <nall/array.hpp>
