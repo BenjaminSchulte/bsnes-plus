@@ -94,6 +94,7 @@ public:
   string toStrings() const;
 
   int32_t indexOfBreakpointExec(uint32_t addr, const string &source) const;
+  void debugDump() const;
 
 public slots:
   void add();

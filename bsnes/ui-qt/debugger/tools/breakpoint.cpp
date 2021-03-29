@@ -532,6 +532,34 @@ void BreakpointEditor::removeBreakpoint(uint32_t index) {
   model->removeRow(index);
 }
 
+void BreakpointEditor::debugDump() const {
+  for(unsigned n = 0; n < SNES::debugger.range_breakpoint.size(); n++) {
+    const SNES::Debugger::Breakpoint &b = SNES::debugger.range_breakpoint[n];
+
+    string row;
+
+    std::map<unsigned, std::vector<int> >::const_iterator it = SNES::debugger.breakpoint_index.find(b.addr);
+    if (it != SNES::debugger.breakpoint_index.end()) {
+      row << "IDX ";
+      std::vector<int>::const_iterator it2 = std::find(it->second.begin(), it->second.end(), n);
+      if (it2 != it->second.end()) {
+        row << "OKK ";
+      } else {
+        row << "--- ";
+      }
+    } else {
+      row << "--- --- ";
+    }
+
+    row << hex<6>(b.addr);
+    if (b.addr_end) {
+      row << "-" << hex<6>(b.addr_end);
+    }
+
+    puts(row);
+  }
+}
+
 int32_t BreakpointEditor::indexOfBreakpointExec(uint32_t addr, const string &source) const {
   for(unsigned n = 0; n < SNES::debugger.range_breakpoint.size(); n++) {
     const SNES::Debugger::Breakpoint &b = SNES::debugger.range_breakpoint[n];

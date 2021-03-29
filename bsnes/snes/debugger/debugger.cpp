@@ -220,21 +220,19 @@ void Debugger::breakpoint_test(Debugger::Breakpoint::Source source, Debugger::Br
 
   if (it != breakpoint_index.end()) {
     for (int index : it->second) {
-      if (index < 0 || index >= breakpoint_index.size()) {
+      if (index < 0 || index >= range_breakpoint.size()) {
         continue;
       }
 
       if (range_breakpoint[index].addr != addr) {
-        puts("BREAKPOINT INDEX IS INVALID");
         continue;
       }
 
       breakpoint_item_test(index, source, mode, addr, data);
     }
-    return;
   }
 
-  for(unsigned i = 0; i < breakpoint_index.size(); i++) {
+  for(unsigned i = 0; i < range_breakpoint.size(); i++) {
     if(range_breakpoint[i].addr_end == 0) continue;
     
     if (breakpoint_item_test(i, source, mode, addr, data)) {
