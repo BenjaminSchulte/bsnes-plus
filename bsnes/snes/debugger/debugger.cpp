@@ -21,9 +21,9 @@ bool Debugger::Breakpoint::operator!=(const uint8& data) const {
   return !operator==(data);
 }
 
-int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel) {
-  if (command[0] == '$') { return hex(substr(command, 1, command.length() - 1)); }
-  if (command[0] >= '0' && command[0] <= '9') { int result=0; strint(command, result); return result; }
+string Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel) {
+  if (command[0] == '$') { int result = hex(substr(command, 1, command.length() - 1)); return result; }
+  if (command[0] >= '0' && command[0] <= '9') { return command; }
 
   if (source == Breakpoint::Source::CPUBus) {
     if (command == "A") { return cpu.regs.a & (cpu.regs.p.m ? 0xFF : 0xFFFF); }
@@ -55,11 +55,26 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
   if (command == "frame") { return cpu.framecounter(); }
   if (command == "clock") { return cpu.clocks(); }
 
-  uint32_t left = params.size() >= 1 ? breakpoint_command(source, params[0], mute, cancel) : 0;
+  uint32_t left = params.size() >= 1 ? decimal(breakpoint_command(source, params[0], mute, cancel)) : 0;
   if (command == "muteif") {
     cancel = !!left;
     mute = true;
-    return 0;
+    return "0";
+  }
+  if (command == "c_str") {
+    char buffer[1024];
+    int index = 0;
+    SNES::debugger.bus_access = true;
+    while (index < 1023) {
+      buffer[index] = SNES::debugger.read(SNES::Debugger::MemorySource::CPUBus, left + index);
+      if (buffer[index] == 0) {
+        break;
+      }
+      index++;
+    }
+    buffer[1023] = 0;
+    SNES::debugger.bus_access = false;
+    return string(buffer);
   }
   if (command == "byte") {
     SNES::debugger.bus_access = true;
@@ -91,7 +106,7 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
   }
 
 
-  uint32_t right = params.size() >= 2 ? breakpoint_command(source, params[1], mute, cancel) : 0;
+  uint32_t right = params.size() >= 2 ? decimal(breakpoint_command(source, params[1], mute, cancel)) : 0;
   if (command == "add") { return left + right; }
   if (command == "sub") { return left - right; }
   if (command == "and") { return left & right; }
@@ -100,10 +115,10 @@ int Debugger::breakpoint_exec_command(Breakpoint::Source source, const string &c
   if (command == "long") { return left | right << 16; }
 
   puts(string("Unknown debug command: ").append(command));
-  return 0;
+  return "0";
 }
 
-int Debugger::breakpoint_command(Breakpoint::Source source, const string &line, bool &mute, bool &cancel) {
+string Debugger::breakpoint_command(Breakpoint::Source source, const string &line, bool &mute, bool &cancel) {
   optional<unsigned> optParamStart(line.position("("));
   lstring params;
   string command(line);
@@ -157,12 +172,16 @@ void Debugger::breakpoint_notify(Breakpoint::Source source, unsigned addr, const
       if (data[left] == '{') {
         bool mute = false;
         bool cancel = false;
-        int number = breakpoint_command(source, substr(data, left + 1, right - left - 1), mute, cancel);
+        string number = breakpoint_command(source, substr(data, left + 1, right - left - 1), mute, cancel);
+        int valueResult = integer(number);
+        if (valueResult != 0) {
+          number = hex(valueResult);
+        }
         if (cancel) {
           return;
         }
         if (!mute) {
-          result << hex(number);
+          result << number;
         }
         left = right + 1;
       }

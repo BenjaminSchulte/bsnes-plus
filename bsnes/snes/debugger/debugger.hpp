@@ -49,8 +49,8 @@ public:
   void breakpoint_test(Breakpoint::Source source, Breakpoint::Mode mode, unsigned addr, uint8 data);
   bool breakpoint_item_test(int index, Breakpoint::Source source, Breakpoint::Mode mode, unsigned addr, uint8 data);
   void breakpoint_notify(Breakpoint::Source source, unsigned addr, const string &name);
-  int breakpoint_command(Breakpoint::Source source, const string &command, bool &mute, bool &cancel);
-  int breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel);
+  string breakpoint_command(Breakpoint::Source source, const string &command, bool &mute, bool &cancel);
+  string breakpoint_exec_command(Breakpoint::Source source, const string &command, const lstring &params, bool &mute, bool &cancel);
 
   bool step_cpu;
   bool step_smp;
